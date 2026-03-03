@@ -2,14 +2,15 @@ import os
 import sys
 import json
 import time
+import glob
+import shutil
 import base64
 import traceback
-import subprocess
 import threading
 from typing import Any, Dict, List, Optional
 
 from flask import Flask, request, jsonify
-from playwright.sync_api import sync_playwright, Error as PWError
+from playwright.sync_api import sync_playwright
 
 
 # ============================================================
@@ -60,26 +61,6 @@ def clamp_int(value: Any, default: int, min_value: int, max_value: int) -> int:
 
 def ensure_api_key(req) -> bool:
     return req.headers.get("x-api-key") == API_KEY
-
-
-def install_chromium() -> None:
-    log("Installing chromium if needed...")
-    os.makedirs(BROWSERS_PATH, exist_ok=True)
-
-    cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
-    proc = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=os.environ.copy(),
-    )
-
-    log("Install finished", returncode=proc.returncode)
-
-    if proc.returncode != 0:
-        log("Install failed", stderr=proc.stderr[-1000:])
-        raise RuntimeError("Chromium install failed")
 
 
 def b64_to_file(data_b64: str, path: str) -> str:
@@ -161,12 +142,136 @@ def normalize_init_scripts(value: Any) -> List[str]:
     return []
 
 
+def normalize_env(value: Any) -> Optional[Dict[str, str]]:
+    if not isinstance(value, dict):
+        return None
+    out: Dict[str, str] = {}
+    for k, v in value.items():
+        if isinstance(k, str) and isinstance(v, str):
+            out[k] = v
+    return out or None
+
+
 def jsonable(value: Any) -> Any:
     try:
         json.dumps(value)
         return value
     except Exception:
         return str(value)
+
+
+def is_executable_file(path: str) -> bool:
+    try:
+        return isinstance(path, str) and os.path.isfile(path) and os.access(path, os.X_OK)
+    except Exception:
+        return False
+
+
+# ============================================================
+# BROWSER DISCOVERY
+# ============================================================
+
+def _append_candidate(candidates: List[Dict[str, str]], seen: set, path: Optional[str], source: str) -> None:
+    if not isinstance(path, str) or not path.strip():
+        return
+    path = os.path.abspath(path.strip())
+    if path in seen:
+        return
+    if is_executable_file(path):
+        seen.add(path)
+        candidates.append({"path": path, "source": source})
+
+
+def discover_chromium_candidates(playwright=None) -> List[Dict[str, str]]:
+    candidates: List[Dict[str, str]] = []
+    seen = set()
+
+    # 1) Caminho que o próprio Playwright conhece, se existir no filesystem
+    if playwright is not None:
+        try:
+            pw_path = playwright.chromium.executable_path
+            _append_candidate(candidates, seen, pw_path, "playwright.chromium.executable_path")
+        except Exception:
+            pass
+
+    # 2) PATH do sistema
+    bin_names = [
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "google-chrome-stable",
+        "google-chrome-beta",
+        "google-chrome-unstable",
+        "chrome",
+    ]
+    for name in bin_names:
+        _append_candidate(candidates, seen, shutil.which(name), f"which:{name}")
+
+    # 3) Caminhos comuns Linux/Render
+    common_paths = [
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/opt/google/chrome/chrome",
+    ]
+    for p in common_paths:
+        _append_candidate(candidates, seen, p, "common-path")
+
+    # 4) Estruturas comuns do Playwright já baixado
+    glob_patterns = [
+        f"{BROWSERS_PATH}/chromium-*/chrome-linux/chrome",
+        "/opt/render/.cache/ms-playwright/chromium-*/chrome-linux/chrome",
+        "/opt/render/project/.cache/ms-playwright/chromium-*/chrome-linux/chrome",
+        "/root/.cache/ms-playwright/chromium-*/chrome-linux/chrome",
+    ]
+    for pattern in glob_patterns:
+        for match in sorted(glob.glob(pattern)):
+            _append_candidate(candidates, seen, match, f"glob:{pattern}")
+
+    return candidates
+
+
+def resolve_chromium_path(playwright, explicit_path: Optional[str]) -> Dict[str, Any]:
+    checked: List[str] = []
+
+    if isinstance(explicit_path, str) and explicit_path.strip():
+        explicit_path = os.path.abspath(explicit_path.strip())
+        checked.append(explicit_path)
+        if is_executable_file(explicit_path):
+            return {
+                "ok": True,
+                "path": explicit_path,
+                "source": "request.executable_path",
+                "checked": checked,
+                "candidates": [{"path": explicit_path, "source": "request.executable_path"}],
+            }
+        return {
+            "ok": False,
+            "error": "explicit_executable_path_not_found_or_not_executable",
+            "checked": checked,
+            "candidates": [],
+        }
+
+    candidates = discover_chromium_candidates(playwright)
+    checked.extend([c["path"] for c in candidates])
+
+    if candidates:
+        chosen = candidates[0]
+        return {
+            "ok": True,
+            "path": chosen["path"],
+            "source": chosen["source"],
+            "checked": checked,
+            "candidates": candidates,
+        }
+
+    return {
+        "ok": False,
+        "error": "chromium_not_found",
+        "checked": checked,
+        "candidates": [],
+    }
 
 
 # ============================================================
@@ -354,17 +459,20 @@ def capture_sequence(page, screenshot_type: str, full_page: bool, jpeg_quality: 
 
 @APP.get("/")
 def root():
-    return jsonify({"ok": True, "service": "single-shot-browser-flex"})
+    return jsonify({"ok": True, "service": "single-shot-browser-flex-no-install"})
 
 
 @APP.get("/health")
 def health():
+    candidates = discover_chromium_candidates()
     return jsonify({
         "ok": True,
         "in_use": _in_use,
         "python": sys.version,
         "pid": os.getpid(),
         "browsers_path": BROWSERS_PATH,
+        "chromium_found": bool(candidates),
+        "chromium_candidates": candidates,
     })
 
 
@@ -422,6 +530,18 @@ def run_browser():
         init_scripts = normalize_init_scripts(body.get("init_script"))
         steps = body.get("steps")
 
+        # opções mais flexíveis de launch
+        explicit_executable_path = body.get("executable_path")
+        headless = bool(body.get("headless", True))
+        channel = body.get("channel")
+        ignore_default_args = body.get("ignore_default_args")
+        chromium_sandbox = body.get("chromium_sandbox")
+        proxy = body.get("proxy")
+        slow_mo = body.get("slow_mo")
+        launch_env = normalize_env(body.get("env"))
+        launch_options = body.get("launch_options") if isinstance(body.get("launch_options"), dict) else {}
+        context_options = body.get("context_options") if isinstance(body.get("context_options"), dict) else {}
+
         if isinstance(storage_state_b64, str) and storage_state_b64.strip():
             storage_path = f"/tmp/state_{int(time.time() * 1000)}.json"
             b64_to_file(storage_state_b64, storage_path)
@@ -429,6 +549,19 @@ def run_browser():
 
         playwright = sync_playwright().start()
         log("Playwright started")
+
+        resolved = resolve_chromium_path(playwright, explicit_executable_path)
+        if not resolved.get("ok"):
+            log("Chromium not found", checked=resolved.get("checked", []))
+            return jsonify({
+                "ok": False,
+                "error": resolved.get("error", "chromium_not_found"),
+                "checked": resolved.get("checked", []),
+                "chromium_candidates": resolved.get("candidates", []),
+            }), 500
+
+        executable_path = resolved["path"]
+        log("Chromium resolved", path=executable_path, source=resolved.get("source"))
 
         launch_args = [
             "--no-sandbox",
@@ -438,37 +571,59 @@ def run_browser():
         ]
         launch_args.extend(browser_args)
 
-        try:
-            browser = playwright.chromium.launch(
-                headless=True,
-                args=launch_args,
-            )
-        except PWError:
-            install_chromium()
-            browser = playwright.chromium.launch(
-                headless=True,
-                args=launch_args,
-            )
-
-        log("Browser launched", args=launch_args)
-
-        context_args: Dict[str, Any] = {
-            "viewport": viewport,
-            "ignore_https_errors": ignore_https_errors,
+        launch_kwargs: Dict[str, Any] = {
+            "headless": headless,
+            "args": launch_args,
+            "executable_path": executable_path,
         }
 
-        if storage_path:
-            context_args["storage_state"] = storage_path
-        if isinstance(user_agent, str) and user_agent.strip():
-            context_args["user_agent"] = user_agent.strip()
-        if isinstance(locale, str) and locale.strip():
-            context_args["locale"] = locale.strip()
-        if isinstance(timezone_id, str) and timezone_id.strip():
-            context_args["timezone_id"] = timezone_id.strip()
-        if extra_http_headers:
-            context_args["extra_http_headers"] = extra_http_headers
+        if isinstance(channel, str) and channel.strip():
+            # só usa channel se você quiser forçar; com executable_path explícito geralmente não precisa
+            launch_kwargs["channel"] = channel.strip()
 
-        context = browser.new_context(**context_args)
+        if isinstance(ignore_default_args, bool) or isinstance(ignore_default_args, list):
+            launch_kwargs["ignore_default_args"] = ignore_default_args
+
+        if isinstance(chromium_sandbox, bool):
+            launch_kwargs["chromium_sandbox"] = chromium_sandbox
+
+        if isinstance(proxy, dict):
+            launch_kwargs["proxy"] = proxy
+
+        if slow_mo is not None:
+            launch_kwargs["slow_mo"] = clamp_int(slow_mo, 0, 0, 5000)
+
+        if launch_env:
+            merged_env = os.environ.copy()
+            merged_env.update(launch_env)
+            launch_kwargs["env"] = merged_env
+
+        # merge final de launch_options, mas sem deixar sobrescrever executable_path sem querer
+        for k, v in launch_options.items():
+            if k == "executable_path":
+                continue
+            launch_kwargs[k] = v
+
+        browser = playwright.chromium.launch(**launch_kwargs)
+        log("Browser launched", executable_path=executable_path, args=launch_args)
+
+        merged_context_options: Dict[str, Any] = {}
+        merged_context_options.update(context_options)
+        merged_context_options["viewport"] = viewport
+        merged_context_options["ignore_https_errors"] = ignore_https_errors
+
+        if storage_path:
+            merged_context_options["storage_state"] = storage_path
+        if isinstance(user_agent, str) and user_agent.strip():
+            merged_context_options["user_agent"] = user_agent.strip()
+        if isinstance(locale, str) and locale.strip():
+            merged_context_options["locale"] = locale.strip()
+        if isinstance(timezone_id, str) and timezone_id.strip():
+            merged_context_options["timezone_id"] = timezone_id.strip()
+        if extra_http_headers:
+            merged_context_options["extra_http_headers"] = extra_http_headers
+
+        context = browser.new_context(**merged_context_options)
         context.set_default_timeout(timeout_ms)
         context.set_default_navigation_timeout(timeout_ms)
 
@@ -505,6 +660,9 @@ def run_browser():
             "final_url": final_url,
             "step_results": step_results,
             "content_length": content_length,
+            "chromium_path": executable_path,
+            "chromium_source": resolved.get("source"),
+            "chromium_candidates": resolved.get("candidates", []),
         }
 
         if capture_sequence_enabled:
@@ -581,4 +739,11 @@ def run_browser():
 log("Service starting...")
 log("API_KEY loaded", length=len(API_KEY))
 log("Browsers path", path=BROWSERS_PATH)
+
+_boot_candidates = discover_chromium_candidates()
+if _boot_candidates:
+    log("Chromium candidates found at boot", count=len(_boot_candidates), first=_boot_candidates[0])
+else:
+    log("Chromium not found at boot")
+
 log("Ready.")
