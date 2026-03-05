@@ -1,7 +1,7 @@
 import os
 import time
-import base64
 import threading
+import glob
 from flask import Flask, request, jsonify, send_file
 from playwright.sync_api import sync_playwright
 
@@ -13,7 +13,6 @@ _run_lock = threading.Lock()
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
-# Rota para baixar a última foto gerada
 @app.route("/download")
 def download():
     if os.path.exists(LAST_IMAGE_PATH):
@@ -28,58 +27,62 @@ def run_browser():
     if not _run_lock.acquire(blocking=False):
         return jsonify({"ok": False, "error": "busy"}), 409
 
+    browser = None
     try:
         body = request.get_json(force=True)
-        storage_state = body.get("storage_state") # O JSON dos cookies convertido
+        storage_state = body.get("storage_state")
+        proxy_config = body.get("proxy") # Recebe o proxy do cliente
 
         with sync_playwright() as p:
-            # Tenta achar o Chromium no cache do Render
-            executable = "/opt/render/project/.cache/ms-playwright/chromium-1105/chrome-linux/chrome"
-            if not os.path.exists(executable):
-                # Fallback caso a versão mude
-                import glob
-                cands = glob.glob("/opt/render/project/.cache/ms-playwright/chromium-*/chrome-linux/chrome")
-                executable = cands[0] if cands else None
-
-            log(f"Usando browser em: {executable}")
+            # Busca o executável do Chromium
+            cands = glob.glob("/opt/render/project/.cache/ms-playwright/chromium-*/chrome-linux/chrome")
+            executable = cands[0] if cands else None
             
+            log(f"Iniciando Browser. Proxy ativo: {bool(proxy_config)}")
+            
+            # Launch com Proxy Dinâmico
             browser = p.chromium.launch(
                 executable_path=executable,
                 headless=True,
+                proxy=proxy_config, # Aqui a mágica acontece
                 args=["--no-sandbox", "--disable-blink-features=AutomationControlled"]
             )
             
-            # Cria contexto com cookies se houver
             context = browser.new_context(
                 storage_state=storage_state,
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
             )
             
-            # Script anti-detecção
+            # Stealth básico
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
             page = context.new_page()
-            log("Navegando para Claude...")
+            log("Acessando Claude.ai...")
             
-            page.goto("https://claude.ai/", wait_until="networkidle", timeout=60000)
+            # Aumentamos o timeout pois proxies podem ser lentos
+            page.goto("https://claude.ai/", wait_until="domcontentloaded", timeout=90000)
             
-            # Tira a foto e salva no caminho de download
+            # Espera 5 segundos para o Cloudflare processar o IP do proxy
+            time.sleep(5)
+            
             page.screenshot(path=LAST_IMAGE_PATH, full_page=True)
-            log("Foto salva com sucesso!")
+            log("Snapshot tirado com sucesso.")
 
             res = {
                 "ok": True, 
                 "title": page.title(),
-                "download_url": f"{request.host_url}download"
+                "final_url": page.url,
+                "download_url": f"{request.host_url.rstrip('/')}/download"
             }
-            browser.close()
             return jsonify(res)
 
     except Exception as e:
-        log(f"Erro: {str(e)}")
+        log(f"Erro na execução: {str(e)}")
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
+        if browser:
+            browser.close()
         _run_lock.release()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=10000)
