@@ -1,0 +1,234 @@
+[
+  {
+    "name": "ARID",
+    "value": "sWyFsyOHnMd4tV9xmYosLCRv38Al0FL+NG2se/fOlAQsdD5MMrBF7h33HP6En85ncDG3WcgyTB3APbhhy5qJmH4i2LfVad8eVLWeDhaZkK3ycmyKmAqjyMD2eD0v7JzWxXiMpNHPNRI8rJrYq06FPUV+KH+rXb0=**5kKEgDf/YVOTHS4g",
+    "domain": ".claude.ai",
+    "path": "/fc",
+    "expires": 1774640825.742303,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Strict"
+  },
+  {
+    "name": "anthropic-device-id",
+    "value": "799888ed-9459-4615-99e8-fec2078fee54",
+    "domain": "claude.ai",
+    "path": "/",
+    "expires": 1798131001.741957,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "cookie_seed_done",
+    "value": "1",
+    "domain": "claude.ai",
+    "path": "/",
+    "expires": 1803584685.736817,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "g_state",
+    "value": "{\"i_l\":0,\"i_ll\":1772048688651,\"i_b\":\"b08U0GOjXH9bQZUY7uZcpxrL0PTz8jMAYF3symu0jvA\",\"i_e\":{\"enable_itp_optimization\":0}}",
+    "domain": "claude.ai",
+    "path": "/",
+    "expires": 1787600688,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__ssid",
+    "value": "ee3ebb28-adb4-4bcf-8ba9-ccedd40f45f3",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1806608817.690874,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "sessionKey",
+    "value": "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",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1774630196.713014,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "routingHint",
+    "value": "sk-ant-rh-eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJFUzI1NiIsICJraWQiOiAiN0MxcWFPRnhqdWxaUjRFQnNuNk1UeUZGNWdDV2JHbFpNVDR2RklrRFFpbyJ9.eyJzdWIiOiAiOGE1ZWVjMTQtNTFkMS00YjNiLWExZGEtOTIwZjkyODY4MDVkIiwgImlhdCI6IDE3NzIwNDg4NTEsICJpc3MiOiAiY2xhdWRlLWFpLXJvdXRpbmciLCAib25ib2FyZGluZ19jb21wbGV0ZSI6IHRydWUsICJwaG9uZV92ZXJpZmllZCI6IGZhbHNlLCAiYWdlX3ZlcmlmaWVkIjogdHJ1ZSwgIm5hbWUiOiAicnlhbjEiLCAibG9jYWxlIjogInB0LUJSIn0.PhOJdzENVn6FFy5psUP3F0ilcgFilzVUrmZnW2E-vTR-TQJVP2OTP9F_OKhtIX-nK68AKYuXarS7xmNxfObqRQ",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1774640852.318981,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "lastActiveOrg",
+    "value": "d716a126-8bd6-4822-8d6b-91fc29e946fc",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803746999.97615,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "intercom-device-id-lupk8zyo",
+    "value": "53233154-8743-4626-b38b-6038048f202b",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1795541002,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "anthropic-consent-preferences",
+    "value": "%7B%22analytics%22%3Atrue%2C%22marketing%22%3Atrue%7D",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803585012.468397,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_fbp",
+    "value": "fb.1.1772049012468.70105269828306150",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1806609012.469035,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ajs_anonymous_id",
+    "value": "claudeai.v1.f49850e7-1f01-4d7d-993f-a7f13513ea2b",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803747001,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "hubspotutk",
+    "value": "3bd44929441d8a2564e3ca92ce91b9e7",
+    "domain": "claude.ai",
+    "path": "/",
+    "expires": 1787605470,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ajs_user_id",
+    "value": "8a5eec14-51d1-4b3b-a1da-920f9286805d",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803747001,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "user-sidebar-visible-on-load",
+    "value": "true",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803747000.274383,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "user-sidebar-pinned",
+    "value": "false",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803589032.665213,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__hstc",
+    "value": "215430600.3bd44929441d8a2564e3ca92ce91b9e7.1772049013505.1772052106686.1772052995460.13",
+    "domain": "claude.ai",
+    "path": "/",
+    "expires": 1787605470,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "activitySessionId",
+    "value": "536b4dd9-b870-40ef-a0ca-7307d1bd4893",
+    "domain": "claude.ai",
+    "path": "/",
+    "expires": 1772254201.741846,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__cf_bm",
+    "value": "rJ5ehwTVa1rM2SenwoEkh7WxdwszC51eaLJAY0tL6qA-1772210996-1.0.1.1-gGtY5JDtYGDuBqBf2IizeD.aCOdoy5xhdTIzi8gIXXhfv.uNQMuXGEhRfKGWN8i9CmpsBWlQXb4QV6NYVmDuG3Kr6hNuX9wb9j_sOL0tAZA",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1772212797.045968,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_cfuvid",
+    "value": "hjb1IWw7qx3bOvzlpbkz2CBVfTSBGNaQHrJl7Xtjmr0-1772210996916-0.0.1.1-604800000",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "cf_clearance",
+    "value": "rW_1GFkQeQQMCYpNtJKa.EmFqkpLkGE4PVxweOFbvKM-1772210998-1.2.1.1-aLz5hwoE4x.CVJoveZHVBOJ2fWx0X6FzbQ74ilWbtu7.7aSaYsNfNHtqNuhQhKfKGpqZn6DYcRpLDrO3yDT_I6vqDQkqkTrxYEGT_DzQmTwxmeY7M9wCLUYCuVINUjAy6j8u3YESIA7mRCd.ycFtXkL1QoRB53tTQH.tGMzrTXhbeKz65h3D1zT.jc.xi_wkhjjqZjObCU_wpU8VJY_mpgipRtTsTFUX03DxpRlt6rw",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803746998.470577,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://claude.ai",
+    "_crHasCrossSiteAncestor": false
+  },
+  {
+    "name": "CH-prefers-color-scheme",
+    "value": "light",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1803746999.977499,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "intercom-session-lupk8zyo",
+    "value": "SjhHdWJ5YXc1b1F6RE1lWnJKQ2dQWlI2a3JCbVN5WktMSE1nbDh1V0J1WkpVczBkMjN6K1NoOXZlNFhtTGpiai9LeG05UWZZemVlM3U1c1g0QlB2MDk0SVMwZEYyaXBTRXhVRU5QbU5ORzNTeERkYnlLNGdUbXNPeVBZSm8zUnVsQk03eWlWd2QrYThVV2lXZmd5cHhnRnFsLzVFaU03TXBpVUUwTE9xVjUwSEZiU2FOckVpYXcveXVYeXVaNkQ5OUgvR0tpRTVGV2dwcWczbm82eHJWUT09LS03ZzBKa3hwZ05YUWgrYk90bXV5MllnPT0=--99ecba37bde2ba5bd9d022355fd134f6e5c18726",
+    "domain": ".claude.ai",
+    "path": "/",
+    "expires": 1773420602,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  }
+]
