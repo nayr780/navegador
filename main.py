@@ -27,62 +27,61 @@ def run_browser():
     if not _run_lock.acquire(blocking=False):
         return jsonify({"ok": False, "error": "busy"}), 409
 
-    browser = None
     try:
         body = request.get_json(force=True)
         storage_state = body.get("storage_state")
-        proxy_config = body.get("proxy") # Recebe o proxy do cliente
+        proxy_config = body.get("proxy")
 
         with sync_playwright() as p:
-            # Busca o executável do Chromium
             cands = glob.glob("/opt/render/project/.cache/ms-playwright/chromium-*/chrome-linux/chrome")
             executable = cands[0] if cands else None
             
-            log(f"Iniciando Browser. Proxy ativo: {bool(proxy_config)}")
+            log(f"Iniciando Browser. Proxy: {proxy_config.get('server') if proxy_config else 'Nenhum'}")
             
-            # Launch com Proxy Dinâmico
             browser = p.chromium.launch(
                 executable_path=executable,
                 headless=True,
-                proxy=proxy_config, # Aqui a mágica acontece
+                proxy=proxy_config,
                 args=["--no-sandbox", "--disable-blink-features=AutomationControlled"]
             )
             
+            # Aumentamos o timeout global do contexto para 60s
             context = browser.new_context(
                 storage_state=storage_state,
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+                viewport={'width': 1280, 'height': 800}
             )
-            
-            # Stealth básico
-            context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            context.set_default_timeout(60000) 
             
             page = context.new_page()
             log("Acessando Claude.ai...")
             
-            # Aumentamos o timeout pois proxies podem ser lentos
-            page.goto("https://claude.ai/", wait_until="domcontentloaded", timeout=90000)
+            # Tentativa de navegação com timeout estendido
+            try:
+                page.goto("https://claude.ai/", wait_until="domcontentloaded", timeout=60000)
+                time.sleep(7) # Espera o Cloudflare/Proxy estabilizar
+                
+                page.screenshot(path=LAST_IMAGE_PATH, full_page=False)
+                log("Snapshot tirado.")
+                
+                res = {
+                    "ok": True, 
+                    "title": page.title(),
+                    "download_url": f"{request.host_url.rstrip('/')}/download"
+                }
+            except Exception as e:
+                log(f"Erro durante navegação: {str(e)}")
+                res = {"ok": False, "error": f"Navegação falhou: {str(e)}"}
             
-            # Espera 5 segundos para o Cloudflare processar o IP do proxy
-            time.sleep(5)
-            
-            page.screenshot(path=LAST_IMAGE_PATH, full_page=True)
-            log("Snapshot tirado com sucesso.")
-
-            res = {
-                "ok": True, 
-                "title": page.title(),
-                "final_url": page.url,
-                "download_url": f"{request.host_url.rstrip('/')}/download"
-            }
+            browser.close()
             return jsonify(res)
 
     except Exception as e:
-        log(f"Erro na execução: {str(e)}")
+        log(f"Erro geral: {str(e)}")
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
-        if browser:
-            browser.close()
-        _run_lock.release()
+        if _run_lock.locked():
+            _run_lock.release()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
